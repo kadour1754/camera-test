@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Test Caméra Auto-Photo</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding: 16px; background:#f7f7f7; }
+    .card { background:white; padding:16px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); max-width:720px; margin:0 auto; }
+    video { width:100%; height:auto; border-radius:8px; background:#000; }
+    .note { color:#555; font-size:0.9rem; margin-top:8px; }
+    #downloadLink { margin-top:10px; display:inline-block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Caméra — Auto-photo</h2>
+    <p class="note">Dès que tu acceptes l’autorisation, une photo sera prise automatiquement.</p>
+
+    <video id="preview" playsinline autoplay></video>
+
+    <a id="downloadLink" style="display:none">Télécharger la photo</a>
+    <p id="msg" class="note"></p>
+
+    <canvas id="photoCanvas" style="display:none;"></canvas>
+  </div>
+
+<script>
+(async () => {
+
+  const video = document.getElementById('preview');
+  const msg = document.getElementById('msg');
+  const canvas = document.getElementById('photoCanvas');
+  const downloadLink = document.getElementById('downloadLink');
+
+  let stream = null;
+  let autoPhotoTaken = false;   // empêche double photo
+
+  function show(text){
+    msg.textContent = text;
+  }
+
+  async function startCamera() {
+    show("Demande d'accès à la caméra...");
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      video.play();
+
+      show("Caméra activée. Photo automatique dans 1 seconde...");
+
+      // attendre que la caméra soit bien lancée
+      setTimeout(() => {
+        if (!autoPhotoTaken) {
+          takePhoto();
+          autoPhotoTaken = true;
+        }
+      }, 1000);
+
+    } catch (err) {
+      console.error(err);
+      show("Erreur : " + err.message);
+    }
+  }
+
+  function takePhoto() {
+    if (!stream) return;
+
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+
+    const width  = video.videoWidth  || settings.width  || 640;
+    const height = video.videoHeight || settings.height || 480;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, width, height);
+
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      downloadLink.href = url;
+      downloadLink.download = "photo_auto.png";
+      downloadLink.style.display = "inline-block";
+      downloadLink.textContent = "Télécharger la photo";
+      show("Photo prise automatiquement !");
+    });
+
+  }
+
+  // lancement immédiat
+  startCamera();
+
+})();
+</script>
+</body>
+</html>
